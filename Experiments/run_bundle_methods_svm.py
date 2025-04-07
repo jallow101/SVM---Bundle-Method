@@ -3,6 +3,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import sys
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -60,22 +63,35 @@ def run_experiment(use_dataset=True, dataset_path="Datasets/iris.csv",
     X_poly = poly.fit_transform(X_scaled)
     print(f"✅ Polynomial feature shape: {X_poly.shape}")
 
-    # Step 3: Run bundle solver
+    # Step 3: Run primal SVM (bundle method)
     w_opt, b_opt, history = bundle_svm_solver(X_poly, y, C=C, mu_0=mu_0, tol=tol)
 
     # Step 4: Plot convergence
-    plt.plot(history, marker='o')
+    plt.plot(history, marker='o', label="Bundle Objective")
     plt.title(f"Objective Convergence (Degree {degree})")
     plt.xlabel("Iteration")
     plt.ylabel("Objective Value")
     plt.grid(True)
     plt.tight_layout()
+    plt.legend()
     plt.show()
 
-    print("\n🎯 Final Results")
+    # Step 5: Compare to sklearn SVC
+    clf = SVC(kernel="poly", degree=degree, C=C, coef0=1, gamma="auto")  # gamma="auto" matches feature scaling
+    clf.fit(X_scaled, y)
+    y_pred = clf.predict(X_scaled)
+
+    # Accuracy (optional)
+    acc = accuracy_score(y, y_pred)
+
+    print("\n🎯 Final Results (Bundle Method)")
     print("Bias (b):", b_opt)
     print("Weight shape:", w_opt.shape)
     print("Final objective:", history[-1])
+
+    print("\n🤖 Comparison: sklearn SVC")
+    print("Support vectors:", clf.n_support_.sum())
+    print("Accuracy on training data:", f"{acc * 100:.2f}%")
 
 if __name__ == "__main__":
     # Set use_dataset=False to run on generated data

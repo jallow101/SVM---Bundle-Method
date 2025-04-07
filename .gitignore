@@ -1,1 +1,4 @@
 *.csv
+
+# Exclude iris.csv from being ignored
+!iris.csv
