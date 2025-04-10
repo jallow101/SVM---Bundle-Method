@@ -4,7 +4,7 @@ This project implements Support Vector Machine (SVM) training using **bundle met
 
 ---
 
-## 📌 Key Features
+##  Key Features
 
 - Primal SVM optimization using **hinge loss** (no slack variables)
 - Support for **explicit polynomial kernels**
@@ -16,7 +16,7 @@ This project implements Support Vector Machine (SVM) training using **bundle met
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 SVM - BUNDLE METHOD/ 
 │ 
@@ -28,3 +28,12 @@ SVM - BUNDLE METHOD/
 ├── Reports/ # Final reports and paper drafts 
 ├── .gitignore # Ignore logs, outputs, checkpoints, etc. 
 └── Readme.md # Project overview and instructions
+
+### Project Modules
+
+- `solver.py`: Main loop of Algorithm 1
+- `subproblem.py`: Solves QP master problem using AMPL
+- `ampl_io.py`: Helper to export bundle to .dat and call AMPL
+- `subgradient.py`: Computes hinge loss subgradients
+- `cutting_plane.py`: Constructs model from bundle
+- `step_update.py`: Handles serious/null step and updates

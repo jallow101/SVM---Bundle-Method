@@ -50,17 +50,17 @@ def run_experiment(use_dataset=False, dataset_path="Datasetzs/iris.csv",
     # Step 1: Load data
     if use_dataset and os.path.exists(dataset_path):
         X, y = load_iris_dataset(dataset_path)
-        print(f"✅ Loaded Iris dataset: {X.shape}")
+        print(f"Loaded Iris dataset: {X.shape}")
     else:
         X, y = generate_data(n_samples=n_samples)
-        print(f"🧪 Generated synthetic dataset: {X.shape}")
+        print(f" Generated synthetic dataset: {X.shape}")
 
     # Step 2: Normalize + expand
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
     poly = PolynomialFeatures(degree=degree, include_bias=True)
     X_poly = poly.fit_transform(X_scaled)
-    print(f"✅ Polynomial feature shape: {X_poly.shape}")
+    print(f" Polynomial feature shape: {X_poly.shape}")
 
     # Step 3: Run primal SVM (bundle method)
     start_time = time.time()
@@ -89,13 +89,13 @@ def run_experiment(use_dataset=False, dataset_path="Datasetzs/iris.csv",
     # Accuracy (optional)
     acc = accuracy_score(y, y_pred)
 
-    print("\n🎯 Final Results (Bundle Method)")
+    print("\n Final Results (Bundle Method)")
     print("Bias (b):", b_opt)
     print("Weight shape:", w_opt.shape)
     print("Final objective:", history[-1])
     print(f"Time taken for Bundle Method: {bundle_time:.4f} seconds")
 
-    print("\n🤖 Comparison: sklearn SVC")
+    print("\n Comparison: sklearn SVC")
     print("Support vectors:", clf.n_support_.sum())
     print("Accuracy on training data:", f"{acc * 100:.2f}%")
     print(f"Time taken for sklearn SVC: {svc_time:.4f} seconds")
