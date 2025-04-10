@@ -1,4 +1,3 @@
-from Functions.plotting import plot_convergence
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -14,6 +13,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from sklearn.preprocessing import StandardScaler, PolynomialFeatures
 from sklearn.datasets import make_classification
 from Functions.solver import bundle_svm_solver
+from Functions.plotting import plot_convergence
 
 def load_iris_dataset(path="Datasets/irzis.csv", binary=True):
     df = pd.read_csv(path)
@@ -31,7 +31,7 @@ def load_iris_dataset(path="Datasets/irzis.csv", binary=True):
 
     return X, y
 
-def generate_data(n_samples=10000, n_features=20, random_state=42):
+def generate_data(n_samples=10000, n_features=40, random_state=42):
     X, y = make_classification(
         n_samples=n_samples,
         n_features=n_features,
@@ -45,8 +45,8 @@ def generate_data(n_samples=10000, n_features=20, random_state=42):
     y = 2 * y - 1  # convert to {-1, +1}
     return X, y
 
-def run_experiment(use_dataset=False, dataset_path="Datasetzs/iris.csv",
-                   degree=2, C=1.0, mu_0=1.0, tol=1e-4, n_samples=10000, step_size_strategy="line_search"):
+def run_experiment(use_dataset=False, dataset_path="Datasets/izris.csv",
+                   degree=2, C=1.0, mu_0=1.0, tol=1e-4, n_samples=2000, step_size_strategy="line_search"):
 
     # Step 1: Load data
     if use_dataset and os.path.exists(dataset_path):

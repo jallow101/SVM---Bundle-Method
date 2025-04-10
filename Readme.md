@@ -37,3 +37,10 @@ SVM - BUNDLE METHOD/
 - `subgradient.py`: Computes hinge loss subgradients
 - `cutting_plane.py`: Constructs model from bundle
 - `step_update.py`: Handles serious/null step and updates
+
+
+
+### Plots and Algorithms
+ * Convergence-----> maybe (Step Sizes)
+ * Time 
+ * AMPL

@@ -23,7 +23,7 @@ def plot_convergence(history, method_label="Bundle Method", degree=2, strategy="
     plt.plot(objectives, marker='o', label="Objective Value $f(x_k)$", linewidth=2)
 
     # Optionally, add step norm (dual insight)
-    plt.plot(step_norms, marker='x', linestyle='--', label=r"Step Norm $\|x_{k+1} - \bar{x}_k\|$", linewidth=1.5)
+    #plt.plot(step_norms, marker='x', linestyle='--', label=r"Step Norm $\|x_{k+1} - \bar{x}_k\|$", linewidth=1.5)
 
     plt.yscale('log')
     plt.xlabel("Iterazione $k$", fontsize=12)
@@ -33,8 +33,8 @@ def plot_convergence(history, method_label="Bundle Method", degree=2, strategy="
     plt.legend()
     plt.tight_layout()
 
-    os.makedirs("results", exist_ok=True)
-    filename = f"results/convergenza_{strategy}_grado{degree}.png"
-    plt.savefig(filename, dpi=300)
-    print(f" Convergence plot saved to {filename}")
+    #os.makedirs("results", exist_ok=True)
+    #filename = f"results/convergenza_{strategy}_grado{degree}.png"
+    #plt.savefig(filename, dpi=300)
+   # print(f" Convergence plot saved to {filename}")
     plt.show()
