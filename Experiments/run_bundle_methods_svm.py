@@ -5,17 +5,16 @@ import os
 import sys
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
-
+import time
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from sklearn.preprocessing import StandardScaler, PolynomialFeatures
 from sklearn.datasets import make_classification
-
 from Functions.solver import bundle_svm_solver
 
-def load_iris_dataset(path="Datasets/iris.csv", binary=True):
+def load_iris_dataset(path="Datasets/irzis.csv", binary=True):
     df = pd.read_csv(path)
     X = df.iloc[:, 1:-1].values  # Skip ID column
     y_raw = df.iloc[:, -1].values
@@ -31,7 +30,7 @@ def load_iris_dataset(path="Datasets/iris.csv", binary=True):
 
     return X, y
 
-def generate_data(n_samples=200, n_features=2, random_state=42):
+def generate_data(n_samples=10000, n_features=20, random_state=42):
     X, y = make_classification(
         n_samples=n_samples,
         n_features=n_features,
@@ -45,8 +44,8 @@ def generate_data(n_samples=200, n_features=2, random_state=42):
     y = 2 * y - 1  # convert to {-1, +1}
     return X, y
 
-def run_experiment(use_dataset=True, dataset_path="Datasets/iris.csv",
-                   degree=2, C=1.0, mu_0=1.0, tol=1e-4, n_samples=200):
+def run_experiment(use_dataset=False, dataset_path="Datasetzs/iris.csv",
+                   degree=2, C=1.0, mu_0=1.0, tol=1e-4, n_samples=10000, step_size_strategy="line_search"):
 
     # Step 1: Load data
     if use_dataset and os.path.exists(dataset_path):
@@ -64,7 +63,10 @@ def run_experiment(use_dataset=True, dataset_path="Datasets/iris.csv",
     print(f"✅ Polynomial feature shape: {X_poly.shape}")
 
     # Step 3: Run primal SVM (bundle method)
-    w_opt, b_opt, history = bundle_svm_solver(X_poly, y, C=C, mu_0=mu_0, tol=tol)
+    start_time = time.time()
+    w_opt, b_opt, history = bundle_svm_solver(X_poly, y, C=C, mu_0=mu_0, tol=tol, step_size_strategy=step_size_strategy)
+    end_time = time.time()
+    bundle_time = end_time - start_time
 
     # Step 4: Plot convergence
     plt.plot(history, marker='o', label="Bundle Objective")
@@ -77,9 +79,12 @@ def run_experiment(use_dataset=True, dataset_path="Datasets/iris.csv",
     plt.show()
 
     # Step 5: Compare to sklearn SVC
+    start_time = time.time()
     clf = SVC(kernel="poly", degree=degree, C=C, coef0=1, gamma="auto")  # gamma="auto" matches feature scaling
     clf.fit(X_scaled, y)
     y_pred = clf.predict(X_scaled)
+    end_time = time.time()
+    svc_time = end_time - start_time
 
     # Accuracy (optional)
     acc = accuracy_score(y, y_pred)
@@ -88,11 +93,20 @@ def run_experiment(use_dataset=True, dataset_path="Datasets/iris.csv",
     print("Bias (b):", b_opt)
     print("Weight shape:", w_opt.shape)
     print("Final objective:", history[-1])
+    print(f"Time taken for Bundle Method: {bundle_time:.4f} seconds")
 
     print("\n🤖 Comparison: sklearn SVC")
     print("Support vectors:", clf.n_support_.sum())
     print("Accuracy on training data:", f"{acc * 100:.2f}%")
+    print(f"Time taken for sklearn SVC: {svc_time:.4f} seconds")
+
+    # Step 6: Step-Size Strategy Analysis (optional)
+    if step_size_strategy == "fixed":
+        print("Step-size strategy: Fixed (α = 2 / (2 + k))")
+    elif step_size_strategy == "line_search":
+        print("Step-size strategy: Line Search (optimal step-size)")
+    else:
+        print("Unknown step-size strategy")
 
 if __name__ == "__main__":
-    # Set use_dataset=False to run on generated data
-    run_experiment(use_dataset=True)
+    run_experiment(use_dataset=True, step_size_strategy="fixed")
