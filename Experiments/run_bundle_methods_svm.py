@@ -1,23 +1,21 @@
-import numpy as np
-import pandas as pd
+
 import matplotlib.pyplot as plt
 import os
 import sys
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
-
+from sklearn.preprocessing import StandardScaler, PolynomialFeatures
+from sklearn.datasets import make_classification
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from sklearn.preprocessing import StandardScaler, PolynomialFeatures
-from sklearn.datasets import make_classification
-
 from Functions.solver import bundle_svm_solver
+
 
 def load_iris_dataset(path="Datasets/iris.csv", binary=True):
     df = pd.read_csv(path)
-    X = df.iloc[:, 1:-1].values  # Skip ID column
+    X = df.iloc[:, 1:-1].values
     y_raw = df.iloc[:, -1].values
 
     if binary:
@@ -28,8 +26,8 @@ def load_iris_dataset(path="Datasets/iris.csv", binary=True):
         y = np.where(y_raw == class_labels[0], -1, 1)
     else:
         raise NotImplementedError("Multiclass not supported.")
-
     return X, y
+
 
 def generate_data(n_samples=200, n_features=2, random_state=42):
     X, y = make_classification(
@@ -45,54 +43,63 @@ def generate_data(n_samples=200, n_features=2, random_state=42):
     y = 2 * y - 1  # convert to {-1, +1}
     return X, y
 
+
 def run_experiment(use_dataset=True, dataset_path="Datasets/iris.csv",
                    degree=2, C=1.0, mu_0=1.0, tol=1e-4, n_samples=200):
 
     # Step 1: Load data
     if use_dataset and os.path.exists(dataset_path):
         X, y = load_iris_dataset(dataset_path)
-        print(f"Loaded Iris dataset: {X.shape}")
+        print(f"✅ Loaded Iris dataset: {X.shape}")
     else:
         X, y = generate_data(n_samples=n_samples)
-        print(f" Generated synthetic dataset: {X.shape}")
+        print(f"🧪 Generated synthetic dataset: {X.shape}")
 
     # Step 2: Normalize + expand
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
     poly = PolynomialFeatures(degree=degree, include_bias=True)
     X_poly = poly.fit_transform(X_scaled)
-    print(f" Polynomial feature shape: {X_poly.shape}")
+    print(f"✅ Polynomial feature shape: {X_poly.shape}")
 
     # Step 3: Run primal SVM (bundle method)
     w_opt, b_opt, history = bundle_svm_solver(X_poly, y, C=C, mu_0=mu_0, tol=tol)
 
     # Step 4: Plot convergence
-    plt.plot(history, marker='o', label="Bundle Objective")
-    plt.title(f"Objective Convergence (Degree {degree})")
+    objectives = [entry["f"] for entry in history]
+    step_norms = [entry["step_norm"] for entry in history]
+
+    plt.figure(figsize=(10, 5))
+    plt.plot(objectives, marker='o', label="Objective Value")
+    plt.plot(step_norms, marker='x', label="Step Norm")
+    plt.yscale("log")
     plt.xlabel("Iteration")
-    plt.ylabel("Objective Value")
+    plt.ylabel("Log-scale Value")
+    plt.title(f"Convergence (Degree {degree})")
     plt.grid(True)
-    plt.tight_layout()
     plt.legend()
+    plt.tight_layout()
+    os.makedirs("results", exist_ok=True)
+    plt.savefig("results/convergence_plot.png", dpi=300)
     plt.show()
 
     # Step 5: Compare to sklearn SVC
-    clf = SVC(kernel="poly", degree=degree, C=C, coef0=1, gamma="auto")  # gamma="auto" matches feature scaling
+    clf = SVC(kernel="poly", degree=degree, C=C, coef0=1, gamma="auto")
     clf.fit(X_scaled, y)
     y_pred = clf.predict(X_scaled)
 
-    # Accuracy (optional)
+    # Accuracy
     acc = accuracy_score(y, y_pred)
 
-    print("\n Final Results (Bundle Method)")
+    print("\n🎯 Final Results (Bundle Method)")
     print("Bias (b):", b_opt)
     print("Weight shape:", w_opt.shape)
-    print("Final objective:", history[-1])
+    print("Final objective:", history[-1]["f"])
 
-    print("\n Comparison: sklearn SVC")
+    print("\n🤖 Comparison: sklearn SVC")
     print("Support vectors:", clf.n_support_.sum())
     print("Accuracy on training data:", f"{acc * 100:.2f}%")
 
+
 if __name__ == "__main__":
-    # Set use_dataset=False to run on generated data
-    run_experiment(use_dataset=True)
+    run_experiment(use_dataset=False)
