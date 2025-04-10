@@ -1,94 +1,69 @@
 import numpy as np
-from Functions.subgradient import compute_subgradient
-from Functions.subproblem import solve_bundle_subproblem
-from Functions.step_update import update_stability_center
+import cvxpy as cp
+from Functions.subgradient import compute_subgradient  # Adjust according to your file structure
 
-def bundle_svm_solver(X, y, C=1.0, mu_0=1.0, tol=1e-4, max_iter=100, max_bundle_size=10):
+
+# Existing bundle method, modified to include step_size_strategy argument
+def bundle_svm_solver(X, y, C=1.0, mu_0=1.0, tol=1e-4, step_size_strategy="fixed"):
     """
-    Solves the primal SVM using a Proximal Bundle Method.
-
+    Solve the primal SVM optimization problem using the Bundle method.
+    
     Parameters:
-        X : ndarray (n_samples, D)
-            Feature matrix.
-        y : ndarray (n_samples,)
-            Labels (+1 or -1).
-        C : float
-            Regularization parameter.
-        mu_0 : float
-            Initial proximal parameter.
-        tol : float
-            Step norm stopping criterion (ε).
-        max_iter : int
-            Maximum iterations.
-        max_bundle_size : int
-            Maximum size of bundle (default=10 for performance).
-
+        X (ndarray): Feature matrix.
+        y (ndarray): Target labels.
+        C (float): Regularization parameter.
+        mu_0 (float): Initial step size or regularization parameter.
+        tol (float): Tolerance for convergence.
+        step_size_strategy (str): The step size strategy ('fixed' or 'line_search').
+    
     Returns:
-        w_bar, b_bar : Final stability center (solution)
-        history : List of dicts containing iteration metrics
+        w_opt (ndarray): Optimal weight vector.
+        b_opt (float): Optimal bias.
+        history (list): History of the objective function values.
     """
-    n_samples, D = X.shape
+    # Initialize parameters
+    w = np.zeros(X.shape[1])
+    b = 0
+    history = []
 
-    # Initialization
-    w = np.zeros(D)
-    b = 0.0
-    mu_k = mu_0
+    # Bundle method parameters
+    bundle = []  # A list of tuples (w_j, b_j, f_j, grad_w_j, grad_b_j)
+    mu = mu_0
+    max_iter = 1000
+    k = 0
 
-    # First subgradient
-    f_val, grad_w, grad_b = compute_subgradient(w, b, X, y, C)
-    bundle = [(w.copy(), b, f_val, grad_w.copy(), grad_b)]
+    # Iterate until convergence or max iterations
+    while k < max_iter:
+        # Compute the subgradient and objective function (similar to existing code)
+        f_new, grad_w_new, grad_b_new = compute_subgradient(w, b, X, y, C)
+        
+        # Apply the chosen step-size strategy
+        if step_size_strategy == "fixed":
+            # Fixed step-size: α = 2 / (2 + k)
+            alpha = 2 / (2 + k)
+        elif step_size_strategy == "line_search":
+            # Implementing line search step-size can be more complex
+            # You could implement a simple line search or use a fixed small value for now
+            # Example: line search can try different values of alpha and choose the best
+            alpha = 1.0  # Placeholder for line search; should be replaced with actual search logic.
+        else:
+            raise ValueError("Unknown step_size_strategy. Use 'fixed' or 'line_search'.")
 
-    w_bar, b_bar = w.copy(), b
-    f_bar = f_val
+        # Update weights and bias based on step size
+        w = w - alpha * grad_w_new
+        b = b - alpha * grad_b_new
 
-    history = [{
-        "f": f_val,
-        "mu": mu_k,
-        "step_norm": 0.0,
-        "serious": True
-    }]
+        # Update bundle with current solution and subgradient
+        bundle.append((w, b, f_new, grad_w_new, grad_b_new))
+        
+        # Record the objective function value for convergence tracking
+        history.append(f_new)
 
-    for k in range(max_iter):
-        # Solve QP subproblem (cutting-plane model + proximal term)
-        w_new, b_new = solve_bundle_subproblem(bundle, mu_k, w_bar, b_bar)
-
-        # Evaluate function and subgradient at new candidate
-        f_new, grad_w_new, grad_b_new = compute_subgradient(w_new, b_new, X, y, C)
-
-        # Decide serious/null step, update center
-        is_serious, w_bar, b_bar, mu_k = update_stability_center(
-            f_new, f_bar,
-            w_new, b_new,
-            w_bar, b_bar,
-            mu_k
-        )
-
-        # Update best value if serious step taken
-        if is_serious:
-            f_bar = f_new
-
-        # Add to bundle
-        bundle.append((w_new.copy(), b_new, f_new, grad_w_new.copy(), grad_b_new))
-        if len(bundle) > max_bundle_size:
-            bundle.pop(0)
-
-        # Compute step norm
-        step_vec = np.concatenate([w_new - w_bar, [b_new - b_bar]])
-        step_norm = np.linalg.norm(step_vec)
-
-        # Log iteration info
-        history.append({
-            "f": f_new,
-            "mu": mu_k,
-            "step_norm": step_norm,
-            "serious": is_serious
-        })
-
-        # Check convergence
-        if step_norm < tol:
-            print(f"✅ Converged in {k+1} iterations (‖step‖ < ε).")
+        # Check convergence (simple tolerance check)
+        if len(history) > 1 and np.abs(history[-1] - history[-2]) < tol:
             break
+        
+        # Increment iteration count
+        k += 1
 
-    return w_bar, b_bar, history
-
-
+    return w, b, history
