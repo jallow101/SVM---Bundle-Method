@@ -10,7 +10,7 @@ def bundle_svm_solver(X, y, C=1.0, mu_0=1.0, tol=1e-4, step_size_strategy="fixed
         w, b: final model parameters
         history: list of {"f", "step_norm"} per iteration
     """
-    max_iter = 1000
+    max_iter = 800
     w = np.zeros(X.shape[1])
     b = 0.0
     history = []
@@ -22,7 +22,17 @@ def bundle_svm_solver(X, y, C=1.0, mu_0=1.0, tol=1e-4, step_size_strategy="fixed
         if step_size_strategy == "fixed":
             alpha = 2 / (2 + k)
         elif step_size_strategy == "line_search":
-            alpha = 1.0  # Placeholder – you can tune or implement actual line search
+            # Backtracking line search
+            alpha = 1.0
+            beta = 0.5
+            while True:
+                w_temp = w - alpha * grad_w
+                b_temp = b - alpha * grad_b
+                step_vec = np.concatenate([w_temp - w, [b_temp - b]])
+                f_temp, _, _ = compute_subgradient(w_temp, b_temp, X, y, C)
+                if f_temp <= f_val - 0.5 * alpha * np.linalg.norm(step_vec)**2:
+                    break
+                alpha *= beta
         else:
             raise ValueError("Invalid step_size_strategy")
 

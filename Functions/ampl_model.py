@@ -1,5 +1,7 @@
 # ampl_io.py
 import subprocess
+import numpy as np
+import os
 
 def write_ampl_data(file_path, G, F, x, mu):
     m, n = G.shape

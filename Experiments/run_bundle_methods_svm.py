@@ -31,7 +31,7 @@ def load_iris_dataset(path="Datasets/irzis.csv", binary=True):
 
     return X, y
 
-def generate_data(n_samples=10000, n_features=40, random_state=42):
+def generate_data(n_samples=2000, n_features=10, random_state=42):
     X, y = make_classification(
         n_samples=n_samples,
         n_features=n_features,
@@ -45,8 +45,8 @@ def generate_data(n_samples=10000, n_features=40, random_state=42):
     y = 2 * y - 1  # convert to {-1, +1}
     return X, y
 
-def run_experiment(use_dataset=False, dataset_path="Datasets/izris.csv",
-                   degree=2, C=1.0, mu_0=1.0, tol=1e-4, n_samples=2000, step_size_strategy="line_search"):
+def run_experiment(use_dataset=False, dataset_path="Datasets/adult.csv",
+                   degree=2, C=1.0, mu_0=1.0, tol=1e-4, n_samples=40000, step_size_strategy="fixed"):
 
     # Step 1: Load data
     if use_dataset and os.path.exists(dataset_path):
@@ -58,6 +58,16 @@ def run_experiment(use_dataset=False, dataset_path="Datasets/izris.csv",
 
     # Step 2: Normalize + expand
     scaler = StandardScaler()
+
+    #convert string to categorical
+    if isinstance(X, pd.DataFrame):
+        X = X.apply(lambda col: pd.factorize(col)[0] if col.dtype == 'object' else col)
+    elif isinstance(X, np.ndarray):
+        X = pd.DataFrame(X).apply(lambda col: pd.factorize(col)[0] if col.dtype == 'object' else col).values
+    else:
+        raise ValueError("Unsupported data type for X.")
+    
+
     X_scaled = scaler.fit_transform(X)
     poly = PolynomialFeatures(degree=degree, include_bias=True)
     X_poly = poly.fit_transform(X_scaled)
@@ -68,12 +78,23 @@ def run_experiment(use_dataset=False, dataset_path="Datasets/izris.csv",
     w_opt, b_opt, history = bundle_svm_solver(X_poly, y, C=C, mu_0=mu_0, tol=tol, step_size_strategy=step_size_strategy)
     end_time = time.time()
     bundle_time = end_time - start_time
+   
+
+    print("\n Final Results (Bundle Method)")
+    print("Bias (b):", b_opt)
+    print("Weight shape:", w_opt.shape)
+    print("Final objective:", history[-1])
+    #bundle method accuracy
+    y_pred = np.sign(X_poly @ w_opt + b_opt)
+    acc = accuracy_score(y, y_pred)
+    print("Bundle Method Accuracy:", f"{acc * 100:.2f}%")
+    print(f"Time taken for Bundle Method: {bundle_time:.4f} seconds")
 
     # Step 4: Plot convergence
 
     plot_convergence(history, method_label="Bundle Method", degree=degree, strategy=step_size_strategy)
     
-
+    
     # Step 5: Compare to sklearn SVC
     start_time = time.time()
     clf = SVC(kernel="poly", degree=degree, C=C, coef0=1, gamma="auto")  # gamma="auto" matches feature scaling
@@ -81,15 +102,7 @@ def run_experiment(use_dataset=False, dataset_path="Datasets/izris.csv",
     y_pred = clf.predict(X_scaled)
     end_time = time.time()
     svc_time = end_time - start_time
-
-    # Accuracy (optional)
     acc = accuracy_score(y, y_pred)
-
-    print("\n Final Results (Bundle Method)")
-    print("Bias (b):", b_opt)
-    print("Weight shape:", w_opt.shape)
-    print("Final objective:", history[-1])
-    print(f"Time taken for Bundle Method: {bundle_time:.4f} seconds")
 
     print("\n Comparison: sklearn SVC")
     print("Support vectors:", clf.n_support_.sum())
