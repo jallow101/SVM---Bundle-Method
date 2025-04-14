@@ -1,0 +1,8 @@
+
+model ampl/svm_model.mod;
+data svm_data.dat;
+option solver gurobi;
+solve;
+display w > svm_solution.txt;
+display b >> svm_solution.txt;
+display xi >> svm_solution.txt;

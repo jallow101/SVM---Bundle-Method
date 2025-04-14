@@ -13,9 +13,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from sklearn.preprocessing import StandardScaler, PolynomialFeatures
 from sklearn.datasets import make_classification
 from Functions.solver import bundle_svm_solver
-from Functions.plotting import plot_convergence
+from Functions.ampl_model import write_svm_ampl_data, run_ampl_svm
+from Functions.plotting import plot_convergence, plot_accuracy_comparison, plot_time_comparison, plot_objective_comparison
 
-def load_iris_dataset(path="Datasets/irzis.csv", binary=True):
+
+
+def load_iris_dataset(path="Datasets/iris.csv", binary=True):
     df = pd.read_csv(path)
     X = df.iloc[:, 1:-1].values  # Skip ID column
     y_raw = df.iloc[:, -1].values
@@ -31,7 +34,7 @@ def load_iris_dataset(path="Datasets/irzis.csv", binary=True):
 
     return X, y
 
-def generate_data(n_samples=2000, n_features=10, random_state=42):
+def generate_data(n_samples=200, n_features=5, random_state=42):
     X, y = make_classification(
         n_samples=n_samples,
         n_features=n_features,
@@ -45,8 +48,11 @@ def generate_data(n_samples=2000, n_features=10, random_state=42):
     y = 2 * y - 1  # convert to {-1, +1}
     return X, y
 
-def run_experiment(use_dataset=False, dataset_path="Datasets/adult.csv",
-                   degree=2, C=1.0, mu_0=1.0, tol=1e-4, n_samples=40000, step_size_strategy="fixed"):
+
+acc_ampl = None
+
+def run_experiment(use_dataset=False, dataset_path="Datasets/iris.csv",
+                   degree=2, C=1.0, mu_0=1.0, tol=1e-4, n_samples=200, step_size_strategy="fixed"):
 
     # Step 1: Load data
     if use_dataset and os.path.exists(dataset_path):
@@ -72,6 +78,9 @@ def run_experiment(use_dataset=False, dataset_path="Datasets/adult.csv",
     poly = PolynomialFeatures(degree=degree, include_bias=True)
     X_poly = poly.fit_transform(X_scaled)
     print(f" Polynomial feature shape: {X_poly.shape}")
+    write_svm_ampl_data(X_poly, y, filename="svm_data.dat", C=C)
+    print("AMPL data exported to svm_data.dat")
+
 
     # Step 3: Run primal SVM (bundle method)
     start_time = time.time()
@@ -88,6 +97,8 @@ def run_experiment(use_dataset=False, dataset_path="Datasets/adult.csv",
     y_pred = np.sign(X_poly @ w_opt + b_opt)
     acc = accuracy_score(y, y_pred)
     print("Bundle Method Accuracy:", f"{acc * 100:.2f}%")
+    acc_bundle = acc
+
     print(f"Time taken for Bundle Method: {bundle_time:.4f} seconds")
 
     # Step 4: Plot convergence
@@ -107,6 +118,8 @@ def run_experiment(use_dataset=False, dataset_path="Datasets/adult.csv",
     print("\n Comparison: sklearn SVC")
     print("Support vectors:", clf.n_support_.sum())
     print("Accuracy on training data:", f"{acc * 100:.2f}%")
+    acc_sklearn = acc
+
     print(f"Time taken for sklearn SVC: {svc_time:.4f} seconds")
 
     # Step 6: Step-Size Strategy Analysis (optional)
@@ -117,5 +130,36 @@ def run_experiment(use_dataset=False, dataset_path="Datasets/adult.csv",
     else:
         print("Unknown step-size strategy")
 
+    # Step 7: Run AMPL Solver
+        
+
+    try:
+        w_ampl, b_ampl = run_ampl_svm()
+
+        if len(w_ampl) == 0 or b_ampl is None:
+            print("AMPL returned no valid solution.")
+        else:
+            y_pred_ampl = np.sign(X_poly @ w_ampl + b_ampl)
+            acc_ampl = accuracy_score(y, y_pred_ampl)
+
+            start_time = time.time()
+            w_ampl, b_ampl = run_ampl_svm()
+            ampl_time = time.time() - start_time
+            
+
+            print("\nAMPL Solver Results:")
+            print(f"AMPL Accuracy: {acc_ampl * 100:.2f}%")
+            print(f"AMPL Bias (b): {b_ampl}")
+            print(f"AMPL Weights (first 5): {w_ampl[:5]}")
+
+                
+            plot_accuracy_comparison(acc_bundle, acc_sklearn, acc_ampl)
+            plot_time_comparison(bundle_time, svc_time, ampl_time)
+
+
+    except Exception as e:
+        print("AMPL run failed:", e)
+
+  
 if __name__ == "__main__":
     run_experiment(use_dataset=True, step_size_strategy="fixed")

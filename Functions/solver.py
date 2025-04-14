@@ -1,62 +1,90 @@
 import numpy as np
 from Functions.subgradient import compute_subgradient
+from Functions.subproblem import solve_bundle_subproblem
+from Functions.step_update import update_stability_center
 
 
-def bundle_svm_solver(X, y, C=1.0, mu_0=1.0, tol=1e-4, step_size_strategy="fixed"):
+def bundle_svm_solver(X, y, C=1.0, mu_0=1.0, tol=1e-4, max_bundle_size=5, max_iter=100, step_size_strategy="fixed"):
     """
-    Simplified subgradient-based solver with step-size strategies.
+    Full proximal bundle method for SVM optimization (primal).
 
     Returns:
         w, b: final model parameters
-        history: list of {"f", "step_norm"} per iteration
+        history: list of dicts with convergence data
     """
-    max_iter = 800
-    w = np.zeros(X.shape[1])
+    D = X.shape[1]
+    w = np.zeros(D)
     b = 0.0
+    mu = mu_0
+    w_bar = w.copy()
+    b_bar = b
     history = []
+    bundle = []
+
+    f_val, grad_w, grad_b = compute_subgradient(w, b, X, y, C)
+    bundle.append((w.copy(), b, f_val, grad_w.copy(), grad_b))
 
     for k in range(max_iter):
-        f_val, grad_w, grad_b = compute_subgradient(w, b, X, y, C)
+        # Solve subproblem using bundle
+        try:
+            w_trial, b_trial = solve_bundle_subproblem(bundle, mu, w_bar, b_bar)
+        except RuntimeError as e:
+            print("Subproblem failed:", e)
+            break
 
-        # Step size
+        f_trial, grad_w_trial, grad_b_trial = compute_subgradient(w_trial, b_trial, X, y, C)
+
+        # Line search strategy
+        alpha = 1.0
         if step_size_strategy == "fixed":
             alpha = 2 / (2 + k)
         elif step_size_strategy == "line_search":
-            # Backtracking line search
-            alpha = 1.0
             beta = 0.5
+            c = 1e-4
+            grad_vec = np.concatenate([grad_w_trial, [grad_b_trial]])
+            f_curr = history[-1]['f'] if history else f_val
+
             while True:
-                w_temp = w - alpha * grad_w
-                b_temp = b - alpha * grad_b
-                step_vec = np.concatenate([w_temp - w, [b_temp - b]])
-                f_temp, _, _ = compute_subgradient(w_temp, b_temp, X, y, C)
-                if f_temp <= f_val - 0.5 * alpha * np.linalg.norm(step_vec)**2:
+                w_new = w + alpha * (w_trial - w)
+                b_new = b + alpha * (b_trial - b)
+                f_new, _, _ = compute_subgradient(w_new, b_new, X, y, C)
+                step_vec = np.concatenate([w_new - w, [b_new - b]])
+                if f_new <= f_curr - c * alpha * np.dot(grad_vec, step_vec):
                     break
                 alpha *= beta
-        else:
-            raise ValueError("Invalid step_size_strategy")
+        
+        # Final update
+        w_new = w + alpha * (w_trial - w)
+        b_new = b + alpha * (b_trial - b)
 
-        # Compute update step
-        w_new = w - alpha * grad_w
-        b_new = b - alpha * grad_b
+        f_new, grad_w_new, grad_b_new = compute_subgradient(w_new, b_new, X, y, C)
 
-        # Step norm
-        step_vec = np.concatenate([w_new - w, [b_new - b]])
-        step_norm = np.linalg.norm(step_vec)
+        # Check for serious step
+        f_old = history[-1]['f'] if history else f_val
+        is_serious, w_bar, b_bar, mu = update_stability_center(
+            f_new, f_old, w_new, b_new, w_bar, b_bar, mu
+        )
 
-        # Update
-        w, b = w_new, b_new
-
-        # Log
+        # Log step
+        step_norm = np.linalg.norm(np.concatenate([w_new - w, [b_new - b]]))
         history.append({
-            "f": f_val,
+            "f": f_new,
             "step_norm": step_norm,
-            "mu": mu_0,  # Not actually used here
-            "serious": True  # Always true in this simplified method
+            "mu": mu,
+            "serious": is_serious
         })
 
+        # Update current point
+        w, b = w_new, b_new
+
+        # Add to bundle
+        bundle.append((w.copy(), b, f_new, grad_w_new.copy(), grad_b_new))
+        if len(bundle) > max_bundle_size:
+            bundle.pop(0)
+
+        # Stopping condition
         if step_norm < tol:
-            print(f" Converged in {k+1} iterations (‖step‖ < tol)")
+            print(f"Converged in {k+1} iterations (‖step‖ < tol)")
             break
 
     return w, b, history
