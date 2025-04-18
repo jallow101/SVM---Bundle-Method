@@ -2,6 +2,11 @@
 
 # Exclude iris.csv from being ignored
 !iris.csv
+!adult.csv
+.txt
+
+#exclude python funtion generated files
+*.pyc
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

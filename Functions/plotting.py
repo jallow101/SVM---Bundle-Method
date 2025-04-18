@@ -93,3 +93,41 @@ def plot_objective_comparison(bundle_obj, sklearn_obj, ampl_obj, save_path="resu
     plt.savefig(save_path, dpi=300)
     print(f" Objective comparison saved to {save_path}")
     plt.show()
+
+def plot_accuracy_comparison(bundle_acc, sklearn_acc, ampl_acc, save_path="results/accuracy_comparison.png"):
+    methods = ["Bundle Method", "sklearn SVC", "AMPL"]
+    accuracies = [bundle_acc, sklearn_acc, ampl_acc]
+
+    plt.figure(figsize=(6, 4))
+    bars = plt.bar(methods, accuracies, color=['#1f77b4', '#ff7f0e', '#2ca02c'])
+    plt.ylim(0.2, 1.05)
+    plt.ylabel("Accuracy")
+    plt.title("Accuracy Comparison Across Methods")
+
+    for bar in bars:
+        yval = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2, yval + 0.01, f"{yval*100:.2f}%", ha='center')
+
+    os.makedirs("results", exist_ok=True)
+    plt.savefig(save_path, dpi=300)
+    print(f" Accuracy comparison plot saved to {save_path}")
+    plt.show()
+
+def plot_convergence_comparison(histories, labels, save_path="results/convergence_comparison.png"):
+    plt.figure(figsize=(8, 5))
+    for history, label in zip(histories, labels):
+        objectives = [entry["f"] for entry in history]
+        plt.plot(objectives, label=label, linewidth=2)
+
+    plt.yscale("log")
+    plt.xlabel("Iteration")
+    plt.ylabel("Objective Value (log scale)")
+    plt.title("Convergence Comparison of Step-Size Strategies")
+    plt.legend()
+    plt.grid(True, which="both", linestyle="--", linewidth=0.6)
+    plt.tight_layout()
+
+    os.makedirs("results", exist_ok=True)
+    plt.savefig(save_path, dpi=300)
+    print(f"Convergence comparison saved to {save_path}")
+    plt.show()

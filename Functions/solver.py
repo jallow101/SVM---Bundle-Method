@@ -4,7 +4,7 @@ from Functions.subproblem import solve_bundle_subproblem
 from Functions.step_update import update_stability_center
 
 
-def bundle_svm_solver(X, y, C=1.0, mu_0=1.0, tol=1e-4, max_bundle_size=5, max_iter=100, step_size_strategy="fixed"):
+def bundle_svm_solver(X, y, C=1.0, mu_0=1.0, tol=1e-4, max_bundle_size=5, max_iter=100, step_size_strategy="fixed", alpha=None):
     """
     Full proximal bundle method for SVM optimization (primal).
 
@@ -34,11 +34,17 @@ def bundle_svm_solver(X, y, C=1.0, mu_0=1.0, tol=1e-4, max_bundle_size=5, max_it
 
         f_trial, grad_w_trial, grad_b_trial = compute_subgradient(w_trial, b_trial, X, y, C)
 
-        # Line search strategy
-        alpha = 1.0
+        
         if step_size_strategy == "fixed":
-            alpha = 2 / (2 + k)
+            if alpha is None:
+                alpha = 2 / (2 + k)
+                print(f"Step size (α): {alpha:.4f}")
+            else:
+                alpha = alpha
+                print(f"Step size (α): {alpha:.4f}")
         elif step_size_strategy == "line_search":
+            # Line search strategy
+            alpha = 1.0
             beta = 0.5
             c = 1e-4
             grad_vec = np.concatenate([grad_w_trial, [grad_b_trial]])

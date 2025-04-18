@@ -15,6 +15,7 @@ def write_svm_ampl_data(X, y, filename="svm_data.dat", C=1.0):
 
         f.write("param X : " + " ".join(str(j+1) for j in range(d)) + " :=\n")
         for i in range(n):
+            print(f"Writing row {i+1}/{n}...")
             row = " ".join(f"{X[i, j]:.6f}" for j in range(d))
             f.write(f"{i+1} {row}\n")
         f.write(";\n")
@@ -31,13 +32,12 @@ display b >> {sol};
 display xi >> {sol};
 """)
 
-    # Run AMPL
-    subprocess.run(["C:/Users/lenovo/OneDrive/Desktop/ampl_mswin64/ampl_mswin64/ampl.exe", "ampl_script.run"], check=True)
+    subprocess.run(["C:/Users/PC2/AMPL/ampl.exe", "ampl_script.run"], check=True)
 
-    # Parse solution
     w = []
+    xi = []
     b = None
-    reading_w = False
+    reading_w = reading_xi = False
 
     with open(sol, "r") as f:
         for line in f:
@@ -53,14 +53,22 @@ display xi >> {sol};
                 parts = line.split()
                 for i in range(0, len(parts), 2):
                     w.append(float(parts[i + 1]))
+
+            elif line.startswith("xi [*] :="):
+                reading_xi = True
+                continue
+            elif reading_xi and ";" in line:
+                reading_xi = False
+                continue
+            elif reading_xi:
+                parts = line.split()
+                for i in range(0, len(parts), 2):
+                    xi.append(float(parts[i + 1]))
+
             elif line.startswith("b ="):
                 b = float(line.split("=")[-1])
 
-    return np.array(w), b
-
-
-
-
+    return np.array(w), b, np.array(xi)
 
 
 if __name__ == "__main__":
